@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Tracker</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <h1>My Movie & TV Show Tracker</h1>
+    <div>
+        <input type="text" id="search" placeholder="Search for a movie or TV show">
+        <select id="type">
+            <option value="movie">Movies</option>
+            <option value="tv">TV Shows</option>
+        </select>
+        <button onclick="searchItems()">Search</button>
+    </div>
+
+    <div class="tabs">
+        <button class="tab-button active" onclick="showTab('lists')">Lists</button>
+        <button class="tab-button" onclick="redirectToWatchingProgress()">Watching Progress</button>
+    </div>
+
+    <div id="results"></div>
+
+    <div id="lists" class="tab-content active">
+        <h2>My Lists</h2>
+        <button onclick="redirectToList('watchlist')">Watchlist</button>
+        <button onclick="redirectToList('maybe')">Maybe</button>
+        <button onclick="redirectToList('favorite')">Favorite</button>
+    </div>
+
+    <script src="search.js"></script>
+    <script src="watchingProgress.js"></script>
+
+    <script>
+        // Function to switch tabs
+        function showTab(tabName) {
+            const tabs = document.querySelectorAll('.tab-content');
+            tabs.forEach((tab) => {
+                tab.classList.toggle('active', tab.id === tabName);
+            });
+
+            const buttons = document.querySelectorAll('.tab-button');
+            buttons.forEach((button) => {
+                button.classList.toggle('active', button.textContent.toLowerCase().includes(tabName));
+            });
+        }
+
+        // Redirect to different list pages
+        function redirectToList(listType) {
+            window.location.href = `${listType}.html`;
+        }
+
+        function redirectToWatchingProgress() {
+            window.location.href = 'watchingProgress.html';
+        }
+    </script>
+</body>
+</html>

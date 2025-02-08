@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Details</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            background-size: cover;
+            background-position: center;
+            color: white;
+            padding: 20px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+        }
+        .details-container {
+            background: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            border-radius: 10px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .button-63 {
+            align-items: center;
+            background-image: linear-gradient(144deg,#AF40FF, #5B42F3 50%,#00DDEB);
+            border: 0;
+            border-radius: 8px;
+            box-shadow: rgba(151, 65, 252, 0.2) 0 15px 30px -5px;
+            box-sizing: border-box;
+            color: #FFFFFF;
+            display: flex;
+            font-family: Phantomsans, sans-serif;
+            font-size: 20px;
+            justify-content: center;
+            line-height: 1em;
+            max-width: 100%;
+            min-width: 140px;
+            padding: 19px 24px;
+            text-decoration: none;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+            white-space: nowrap;
+            cursor: pointer;
+        }
+        .button-63:active,
+        .button-63:hover {
+            outline: 0;
+        }
+        @media (min-width: 768px) {
+            .button-63 {
+                font-size: 24px;
+                min-width: 196px;
+            }
+        }
+        .genres {
+            margin: 10px 0;
+            font-style: italic;
+        }
+        .release-date {
+            margin: 10px 0;
+            font-weight: bold;
+            color: #ffd700;
+        }
+        .list-buttons {
+            margin-top: 20px;
+        }
+        .list-buttons button {
+            margin: 5px;
+        }
+    </style>
+</head>
+<body>
+    <button class="button-63" onclick="window.history.back()">Back to Search</button>
+    <div class="details-container">
+        <h1 id="title"></h1>
+        <p class="release-date" id="release-date"></p>
+        <p class="genres" id="genres"></p>
+        <p id="overview"></p>
+        <div id="seasons-info"></div>
+        <div class="list-buttons">
+            <button onclick="addToList('watchlist')">Add to Watchlist</button>
+            <button onclick="addToList('maybe')">Add to Maybe</button>
+            <button onclick="addToList('favorite')">Add to Favorite</button>
+        </div>
+    </div>
+
+    <script>
+        const API_KEY = '37c08cbd542e2f54d82f2c0dd22901f0';
+        const urlParams = new URLSearchParams(window.location.search);
+        const type = urlParams.get('type');
+        const id = urlParams.get('id');
+        let data;
+
+        function formatDate(dateString) {
+            if (!dateString) return 'Release date not available';
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-GB', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit'
+            });
+        }
+
+        function formatDateForList(dateString) {
+            if (!dateString) return 'Release date not available';
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-GB', {
+                year: 'numeric',
+                month: 'short',
+                day: '2-digit'
+            }).replace(/\b(\w)/g, char => char.toUpperCase());
+        }
+
+        async function fetchDetails() {
+            try {
+                const response = await fetch(`https://api.themoviedb.org/3/${type}/${id}?api_key=${API_KEY}`);
+                data = await response.json();
+
+                // Set background image
+                const posterPath = data.poster_path ? `https://image.tmdb.org/t/p/w1280${data.poster_path}` : 'https://via.placeholder.com/1280x720?text=No+Poster+Available';
+                document.body.style.backgroundImage = `url('${posterPath}')`;
+
+                // Set title and overview
+                document.getElementById('title').textContent = type === 'movie' ? data.title : data.name;
+                document.getElementById('overview').textContent = data.overview;
+
+                // Set release date
+                const releaseDate = type === 'movie' ? data.release_date : data.first_air_date;
+                document.getElementById('release-date').textContent = `Release Date: ${formatDate(releaseDate)}`;
+
+                // Set genres
+                const genres = data.genres.map(genre => genre.name).join(', ');
+                document.getElementById('genres').textContent = `Genres: ${genres}`;
+
+                // Fetch seasons and episodes for TV shows
+                if (type === 'tv') {
+                    const seasonsResponse = await fetch(`https://api.themoviedb.org/3/tv/${id}?api_key=${API_KEY}`);
+                    const seasonsData = await seasonsResponse.json();
+                    const seasonsInfo = document.getElementById('seasons-info');
+                    seasonsInfo.innerHTML = `<h2>Seasons: ${seasonsData.number_of_seasons}</h2>`;
+                    seasonsData.seasons.forEach((season) => {
+                        seasonsInfo.innerHTML += `<p>Season ${season.season_number}: ${season.episode_count} episodes</p>`;
+                    });
+                }
+            } catch (error) {
+                console.error("Error fetching details:", error);
+                alert("Failed to load details. Please try again.");
+            }
+        }
+
+        function addToList(listType) {
+            if (!data) {
+                alert("Data is not loaded yet. Please try again.");
+                return;
+            }
+
+            const title = document.getElementById('title').textContent;
+            const releaseDate = type === 'movie' ? data.release_date : data.first_air_date;
+            const item = {
+                title,
+                releaseDate: formatDateForList(releaseDate), // Adjusted release date format for lists
+                type,
+                genres: data.genres.map(genre => genre.name),
+                overview: data.overview,
+                posterPath: data.poster_path
+            };
+
+            const list = JSON.parse(localStorage.getItem(listType)) || [];
+
+            // Avoid duplicates
+            if (!list.some((i) => i.title === title && i.type === type)) {
+                list.push(item);
+                localStorage.setItem(listType, JSON.stringify(list));
+                alert(`Added to ${listType}`);
+            } else {
+                alert('Item already in list!');
+            }
+        }
+
+        fetchDetails();
+    </script>
+</body>
+</html>

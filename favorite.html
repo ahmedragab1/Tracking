@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Favorite List</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        #list-items li {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        #list-items img {
+            max-height: 100px;
+            margin-right: 10px;
+        }
+
+        #list-items button {
+            margin-left: auto;
+            margin-right: 5px;
+            padding: 5px 10px;
+            cursor: pointer;
+        }
+
+        .start-watching-button {
+            background-color: #4CAF50;
+            border: none;
+            color: white;
+            padding: 5px 10px;
+            text-align: center;
+            text-decoration: none;
+            display: none;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        li[data-type="series"] .start-watching-button,
+        li[data-type="tv series"] .start-watching-button,
+        li[data-type="tv"] .start-watching-button {
+            display: inline-block;
+        }
+
+        .clickable {
+            cursor: pointer;
+        }
+
+        #list-items a {
+            text-decoration: none;
+            color: inherit;
+        }
+
+        #list-items a:hover {
+            text-decoration: underline;
+        }
+
+        .no-items {
+            text-align: center;
+            margin: 20px;
+            font-style: italic;
+        }
+
+        #filter-button {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 5px 10px;
+            cursor: pointer;
+        }
+
+        #filter-options {
+            display: none;
+            position: absolute;
+            top: 40px;
+            right: 10px;
+            background-color: white;
+            border: 1px solid #ccc;
+            padding: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        #filter-options label {
+            display: block;
+            margin-bottom: 5px;
+
+    </style>
+</head>
+<body>
+    <h1>Favorite List</h1>
+    <button id="filter-button">Filter</button>
+    <div id="filter-options">
+        <label><input type="checkbox" id="filter-movies" checked> Movies</label>
+        <label><input type="checkbox" id="filter-series" checked> Series</label>
+        <label><input type="checkbox" id="filter-unreleased" checked> Unreleased</label>
+    </div>
+    <ul id="list-items"></ul>
+    <button onclick="window.location.href='index.html'" style="margin: 20px;">Back to Main Page</button>
+
+    <script>
+        const apiKey = '37c08cbd542e2f54d82f2c0dd22901f0';
+
+        function createProgressItem(title, posterUrl) {
+            return {
+                title,
+                posterUrl,
+                progress: {
+                    season: 1,
+                    episode: 1
+                },
+                type: 'tv',
+                id: null
+            };
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const listItems = document.getElementById('list-items');
+            const favoriteList = JSON.parse(localStorage.getItem('favorite')) || [];
+
+            if (favoriteList.length === 0) {
+                listItems.innerHTML = '<li class="no-items">No items in your favorite list.</li>';
+            } else {
+                favoriteList.forEach(async (item) => {
+                    const li = document.createElement('li');
+                    const { posterUrl, id } = await getPoster(item.title, item.type);
+                    const currentDate = new Date().toISOString().split('T')[0];
+                    const itemReleaseDate = new Date(item.releaseDate.split('-').reverse().join('-')); // Convert dd-MMM-yyyy to yyyy-MM-dd
+                    const releaseYear = itemReleaseDate.getFullYear();
+
+                    li.dataset.type = item.type.toLowerCase();
+                    li.dataset.released = itemReleaseDate <= new Date(currentDate) ? 'released' : 'unreleased';
+
+                    li.innerHTML = `
+                        <a href="details.html?id=${id}&type=${item.type.toLowerCase()}" class="clickable">
+                            <img src="${posterUrl || 'placeholder.jpg'}" alt="Poster">
+                        </a>
+                        <a href="details.html?id=${id}&type=${item.type.toLowerCase()}" class="clickable">
+                            <span>${item.title} (${releaseYear}) - ${item.type.toUpperCase()}</span>
+                        </a>
+                        <button onclick="confirmRemove('favorite', '${item.title}', '${item.type}')">Remove</button>
+                        <button class="start-watching-button" onclick="addToWatchingProgress('${item.title}', '${posterUrl}')">Start Watching</button>
+                    `;
+                    listItems.appendChild(li);
+                });
+            }
+
+            document.getElementById('filter-button').addEventListener('click', () => {
+                const filterOptions = document.getElementById('filter-options');
+                filterOptions.style.display = filterOptions.style.display === 'block' ? 'none' : 'block';
+            });
+
+            document.getElementById('filter-movies').addEventListener('change', applyFilters);
+            document.getElementById('filter-series').addEventListener('change', applyFilters);
+            document.getElementById('filter-unreleased').addEventListener('change', applyFilters);
+        });
+
+        async function getPoster(title, type) {
+            try {
+                let searchUrl;
+                if (type.toLowerCase() === 'series' || type.toLowerCase() === 'tv series' || type.toLowerCase() === 'tv') {
+                    searchUrl = `https://api.themoviedb.org/3/search/tv?api_key=${apiKey}&query=${encodeURIComponent(title)}`;
+                } else {
+                    searchUrl = `https://api.themoviedb.org/3/search/movie?api_key=${apiKey}&query=${encodeURIComponent(title)}`;
+                }
+
+                const response = await fetch(searchUrl);
+                const data = await response.json();
+
+                if (data.results && data.results.length > 0) {
+                    const posterPath = data.results[0].poster_path;
+                    const id = data.results[0].id;
+                    if (posterPath) {
+                        return { posterUrl: `https://image.tmdb.org/t/p/w500/${posterPath}`, id };
+                    }
+                }
+                console.log("No results found for", title);
+                return { posterUrl: null, id: null };
+            } catch (error) {
+                console.error("Error fetching poster:", error);
+                return { posterUrl: null, id: null };
+            }
+        }
+
+        function confirmRemove(listType, title, type) {
+            const isConfirmed = confirm(`Are you sure you want to remove "${title}" from your ${listType} list?`);
+            if (isConfirmed) {
+                removeFromList(listType, title, type);
+                showRemovalMessage(`${title} removed!`);
+            }
+        }
+
+        function removeFromList(listType, title, type) {
+            let list = JSON.parse(localStorage.getItem(listType)) || [];
+            list = list.filter((item) => !(item.title === title && item.type === type));
+            localStorage.setItem(listType, JSON.stringify(list));
+            window.location.reload();
+        }
+
+        
+        function addToWatchingProgress(title, posterUrl) {
+            const watchingProgress = JSON.parse(localStorage.getItem('watchingProgress')) || [];
+
+            if (!watchingProgress.some((item) => item.title === title)) {
+                const newItem = createProgressItem(title, posterUrl);
+                watchingProgress.push(newItem);
+                localStorage.setItem('watchingProgress', JSON.stringify(watchingProgress));
+                alert(title + ' added to Watching Progress!');
+            } else {
+                alert('Item already in Watching Progress!');
+            }
+        }
+
+        function applyFilters() {
+            const filterMovies = document.getElementById('filter-movies').checked;
+            const filterSeries = document.getElementById('filter-series').checked;
+            const filterUnreleased = document.getElementById('filter-unreleased').checked;
+
+            const listItems = document.getElementById('list-items').children;
+            for (let i = 0; i < listItems.length; i++) {
+                const item = listItems[i];
+                const itemType = item.dataset.type;
+                const itemReleased = item.dataset.released;
+
+                if ((itemType === 'movie' && !filterMovies) ||
+                    (itemType === 'series' && !filterSeries) ||
+                    (itemType === 'tv' && !filterSeries) ||
+                    (itemReleased === 'unreleased' && !filterUnreleased) ||
+                    (itemReleased === 'released' && filterUnreleased && !filterMovies && !filterSeries)) {
+                    item.style.display = 'none';
+                } else {
+                    item.style.display = 'flex';
+                }
+            }
+        }
+    </script>
+</body>
+</html>
