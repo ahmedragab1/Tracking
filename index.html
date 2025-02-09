@@ -5,8 +5,34 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Tracker</title>
     <link rel="stylesheet" href="styles.css">
+    <style>
+        .settings-container {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+        }
+        .popup {
+            display: none;
+            position: absolute;
+            top: 40px;
+            right: 10px;
+            background: white;
+            border: 1px solid #ccc;
+            padding: 10px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.2);
+        }
+    </style>
 </head>
 <body>
+    <div class="settings-container">
+        <button onclick="togglePopup()">⚙️ Settings</button>
+        <div class="popup" id="settingsPopup">
+            <button onclick="backupLists()">Backup Lists</button>
+            <button onclick="document.getElementById('restoreFile').click()">Restore Lists</button>
+            <input type="file" id="restoreFile" style="display: none;" onchange="restoreLists()">
+        </div>
+    </div>
+    
     <h1>My Movie & TV Show Tracker</h1>
     <div>
         <input type="text" id="search" placeholder="Search for a movie or TV show">
@@ -31,24 +57,49 @@
         <button onclick="redirectToList('favorite')">Favorite</button>
     </div>
 
-    <script src="search.js"></script>
-    <script src="watchingProgress.js"></script>
-
     <script>
-        // Function to switch tabs
-        function showTab(tabName) {
-            const tabs = document.querySelectorAll('.tab-content');
-            tabs.forEach((tab) => {
-                tab.classList.toggle('active', tab.id === tabName);
-            });
-
-            const buttons = document.querySelectorAll('.tab-button');
-            buttons.forEach((button) => {
-                button.classList.toggle('active', button.textContent.toLowerCase().includes(tabName));
-            });
+        function togglePopup() {
+            const popup = document.getElementById('settingsPopup');
+            popup.style.display = popup.style.display === 'block' ? 'none' : 'block';
         }
 
-        // Redirect to different list pages
+        function backupLists() {
+            const data = {
+                watchlist: JSON.parse(localStorage.getItem('watchlist') || '[]'),
+                maybe: JSON.parse(localStorage.getItem('maybe') || '[]'),
+                favorite: JSON.parse(localStorage.getItem('favorite') || '[]')
+            };
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'backup.json';
+            link.click();
+        }
+
+        function restoreLists() {
+            const fileInput = document.getElementById('restoreFile');
+            const file = fileInput.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const data = JSON.parse(event.target.result);
+                localStorage.setItem('watchlist', JSON.stringify(data.watchlist || []));
+                localStorage.setItem('maybe', JSON.stringify(data.maybe || []));
+                localStorage.setItem('favorite', JSON.stringify(data.favorite || []));
+                alert('Lists restored successfully!');
+            };
+            reader.readAsText(file);
+        }
+
+        function showTab(tabName) {
+            const tabs = document.querySelectorAll('.tab-content');
+            tabs.forEach(tab => tab.classList.toggle('active', tab.id === tabName));
+
+            const buttons = document.querySelectorAll('.tab-button');
+            buttons.forEach(button => button.classList.toggle('active', button.textContent.toLowerCase().includes(tabName)));
+        }
+
         function redirectToList(listType) {
             window.location.href = `${listType}.html`;
         }
