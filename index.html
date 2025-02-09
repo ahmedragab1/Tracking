@@ -6,34 +6,46 @@
     <title>My Tracker</title>
     <link rel="stylesheet" href="styles.css">
     <style>
-        .settings-container {
+        /* Styles for the settings button and modal */
+        #settings-button {
             position: absolute;
             top: 10px;
             right: 10px;
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
         }
-        .popup {
+
+        #settings-modal {
             display: none;
             position: absolute;
-            top: 40px;
+            top: 50px;
             right: 10px;
             background: white;
             border: 1px solid #ccc;
             padding: 10px;
-            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+        }
+
+        #settings-modal button {
+            display: block;
+            margin: 5px 0;
         }
     </style>
 </head>
 <body>
-    <div class="settings-container">
-        <button onclick="togglePopup()">⚙️ Settings</button>
-        <div class="popup" id="settingsPopup">
-            <button onclick="backupLists()">Backup Lists</button>
-            <button onclick="document.getElementById('restoreFile').click()">Restore Lists</button>
-            <input type="file" id="restoreFile" style="display: none;" onchange="restoreLists()">
-        </div>
-    </div>
-    
     <h1>My Movie & TV Show Tracker</h1>
+    <!-- Settings Button -->
+    <button id="settings-button" onclick="toggleSettingsModal()">⚙️</button>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal">
+        <button onclick="exportData()">Export Data</button>
+        <button onclick="importData()">Import Data</button>
+    </div>
+
     <div>
         <input type="text" id="search" placeholder="Search for a movie or TV show">
         <select id="type">
@@ -57,55 +69,73 @@
         <button onclick="redirectToList('favorite')">Favorite</button>
     </div>
 
+    <script src="search.js"></script>
+    <script src="watchingProgress.js"></script>
+
     <script>
-        function togglePopup() {
-            const popup = document.getElementById('settingsPopup');
-            popup.style.display = popup.style.display === 'block' ? 'none' : 'block';
-        }
-
-        function backupLists() {
-            const data = {
-                watchlist: JSON.parse(localStorage.getItem('watchlist') || '[]'),
-                maybe: JSON.parse(localStorage.getItem('maybe') || '[]'),
-                favorite: JSON.parse(localStorage.getItem('favorite') || '[]')
-            };
-            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = 'backup.json';
-            link.click();
-        }
-
-        function restoreLists() {
-            const fileInput = document.getElementById('restoreFile');
-            const file = fileInput.files[0];
-            if (!file) return;
-            
-            const reader = new FileReader();
-            reader.onload = function(event) {
-                const data = JSON.parse(event.target.result);
-                localStorage.setItem('watchlist', JSON.stringify(data.watchlist || []));
-                localStorage.setItem('maybe', JSON.stringify(data.maybe || []));
-                localStorage.setItem('favorite', JSON.stringify(data.favorite || []));
-                alert('Lists restored successfully!');
-            };
-            reader.readAsText(file);
-        }
-
+        // Function to switch tabs
         function showTab(tabName) {
             const tabs = document.querySelectorAll('.tab-content');
-            tabs.forEach(tab => tab.classList.toggle('active', tab.id === tabName));
+            tabs.forEach((tab) => {
+                tab.classList.toggle('active', tab.id === tabName);
+            });
 
             const buttons = document.querySelectorAll('.tab-button');
-            buttons.forEach(button => button.classList.toggle('active', button.textContent.toLowerCase().includes(tabName)));
+            buttons.forEach((button) => {
+                button.classList.toggle('active', button.textContent.toLowerCase().includes(tabName));
+            });
         }
 
+        // Redirect to different list pages
         function redirectToList(listType) {
             window.location.href = `${listType}.html`;
         }
 
         function redirectToWatchingProgress() {
             window.location.href = 'watchingProgress.html';
+        }
+
+        // Toggle settings modal visibility
+        function toggleSettingsModal() {
+            const modal = document.getElementById('settings-modal');
+            modal.style.display = modal.style.display === 'block' ? 'none' : 'block';
+        }
+
+        // Export data to a JSON file
+        function exportData() {
+            const data = {
+                watchlist: JSON.parse(localStorage.getItem('watchlist') || '[]'),
+                maybe: JSON.parse(localStorage.getItem('maybe') || '[]'),
+                favorite: JSON.parse(localStorage.getItem('favorite') || '[]'),
+            };
+
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'tracker-data.json';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // Import data from a JSON file
+        function importData() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.onchange = (event) => {
+                const file = event.target.files[0];
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const data = JSON.parse(e.target.result);
+                    localStorage.setItem('watchlist', JSON.stringify(data.watchlist));
+                    localStorage.setItem('maybe', JSON.stringify(data.maybe));
+                    localStorage.setItem('favorite', JSON.stringify(data.favorite));
+                    alert('Data imported successfully!');
+                };
+                reader.readAsText(file);
+            };
+            input.click();
         }
     </script>
 </body>
